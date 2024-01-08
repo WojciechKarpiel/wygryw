@@ -1,7 +1,13 @@
 -- import Mathlib.Tactic.Find
-import Mathlib.Tactic.LibrarySearch
+-- import Mathlib.Tactic.LibrarySearch
 
--- doesn't work?
+-- #find _ + _ = _ + _
+-- #find (_ : ℕ) + _ = _ + _
+-- #find ℕ → ℕ
+-- #find (_ : nat) + _ = _ + _
+-- #find _ + _ = _ + _
+-- #find _ (_ + _) → _ + _ = _ + _   -- TODO(Mario): no results
+-- #find add_group _ → _ + _ = _ + _ -- TODO(Mario): no results
 -- #find _ || _
 
 inductive Player: Type 0 where
@@ -179,11 +185,91 @@ theorem bbbb gaem p (H: hasWinningPath p gaem) :
     · rw [hasWinningPath] at H
       simp only [BEq.beq, Player.beq] at H
     · rw [determineWinner]
-  case PlayerDecision dpl da ab Ha Hb  =>
+  case PlayerDecision dpl da db Ha Hb  =>
     cases dpl
     · cases p
-      ·
-    sorry
+      · have xDD :=winPathOr _ _ _ H
+        induction xDD
+        case inl xd =>
+          have Hh := Ha xd
+          -- rewrite [← Hh]
+          rw [determineWinner]
+          simp  [BEq.beq, Player.beq]
+          simp [bestStrategy, xd]
+          conv =>
+            rhs
+            rw [←Hh ]
+        case inr xd =>
+          have Hh := Hb xd
+          rw [determineWinner]
+          simp  [BEq.beq, Player.beq]
+          -- have notFirst := oneWinning  da Player.First
+          simp [bestStrategy]
+          --have Hq : (hasWinningPath Player.First da) = (hasWinningPath Player.First da) := by rfl
+          --revert Hq
+          generalize H: hasWinningPath Player.First da = ddd
+          cases ddd
+          simp
+          conv =>
+            rhs
+            rw [←Hh ]
+          simp
+          conv =>
+            rhs
+            rw [← Ha H ]
+      · have xDD :=winPathAnd _ _ _ H
+        have XDa := xDD.left
+        have XDb := xDD.right
+        rw [determineWinner]
+        simp  [BEq.beq, Player.beq]
+        cases (otherStrat da db)
+        · simp
+          conv =>
+            rhs
+            rw [← Ha XDa ]
+        · simp
+          conv =>
+            rhs
+            rw [← Hb XDb ]
+    · cases p
+      · have xDD :=winPathAnd _ _ _ H
+        have XDa := xDD.left
+        have XDb := xDD.right
+        rw [determineWinner]
+        simp  [BEq.beq, Player.beq]
+        cases (otherStrat da db)
+        · simp
+          conv =>
+            rhs
+            rw [← Ha XDa ]
+        · simp
+          conv =>
+            rhs
+            rw [← Hb XDb ]
+      · induction winPathOr _ _ _ H
+        · case inl xD  =>
+          rw [determineWinner]
+          simp  [BEq.beq, Player.beq]
+          rw [bestStrategy, xD]
+          simp
+          conv =>
+            rhs
+            rw [← Ha xD ]
+        · case inr xD  =>
+          rw [determineWinner]
+          simp  [BEq.beq, Player.beq]
+          rw [bestStrategy]
+          generalize H: hasWinningPath Player.Second da = ddd
+          cases ddd
+          · simp
+            conv =>
+              rhs
+              rw [← Hb xD ]
+          · simp
+            conv =>
+              rhs
+              rw [← Ha H ]
+
 -- def moveD nextPlayer nextA nextB adv trc : determineWinnerQ
 --  (BinaryGameTree.PlayerDecision nextPlayer nextA nextB) (bestMove winner) adv trc =
 
