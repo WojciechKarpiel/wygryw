@@ -170,7 +170,7 @@ theorem winPathOr p a b
   · simp [BEq.beq, Player.beq] at H
     exact H
 
-theorem bbbb gaem p (H: hasWinningPath p gaem) :
+theorem havingWinningPathWins gaem p (H: hasWinningPath p gaem) :
  ∃ strat, ∀ otherStrat, determineWinner gaem (λ l => if l == p then strat else otherStrat) = p := by
   exists bestStrategy p
   intro otherStrat
@@ -270,36 +270,16 @@ theorem bbbb gaem p (H: hasWinningPath p gaem) :
               rhs
               rw [← Ha H ]
 
--- def moveD nextPlayer nextA nextB adv trc : determineWinnerQ
---  (BinaryGameTree.PlayerDecision nextPlayer nextA nextB) (bestMove winner) adv trc =
-
--- thm DET_OR w(DXab)=X => Wa=A or WB = X
--- thm Codet_OR w(DYab)=X => Wa=X and AB=X
-
--- THM: If straregy A wins, then bestStrategy wins too
-
--- theorem bestStrategyisbest1 game str1 str2 (H: (determineWinner game str1 str2) = Player.First):
-  -- determineWinner game (bestMove Player.First) str2 = Player.First := by
-
-
--- THM : has winning path -> has winning strategy
-
--- now prove that bestmove strategy always works for one og the players
-theorem thmGTT (game: BinaryGameTree) : ∃ p, ∃ sp, ∀ sop, (determineWinner game sp sop) = p := by
-  let best1 := bestStrategy Player.First
-  let best2 := bestStrategy Player.Second
-  let winner := determineWinner game best1 best2
-  exists winner
-  exists bestMove winner
-  intro adverstaryStrategy
-  induction game
-  case FirstPlayerWins => rfl
-  case SecondPlayerWins => rfl
-  case PlayerDecision nextP nextA nextB hA hB =>
-    rw [determineWinner]
-    cases nextP
-    case First =>
-      simp
-        -- rw [hA]
-      sorry
-    case Second => sorry
+theorem deterministicGamesHaveWinningStrategy (game: BinaryGameTree):
+∃ p, ∃ sp, ∀ sop,
+(determineWinner game (λ l => if l == p then sp else sop)) = p := by
+  generalize H₁: hasWinningPath Player.First game = firstWins
+  cases firstWins
+  · have H₂ := oneWinning game Player.Second
+    simp only [Player.other] at H₂; rw [H₁] at H₂; simp at H₂
+    exists Player.Second
+    apply havingWinningPathWins
+    simp only [H₂]
+  · exists Player.First
+    apply havingWinningPathWins
+    simp only [H₁]
