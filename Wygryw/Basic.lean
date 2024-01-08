@@ -105,6 +105,7 @@ theorem winPathOr p a b
   rw [hasWinningPath] at H
   cases p <;> simp [BEq.beq, Player.beq] at H <;> assumption
 
+-- TODO THIS IS AWFUL REWRITE IT
 theorem havingWinningPathWins gaem p (H: hasWinningPath p gaem) :
  ∃ strat, ∀ otherStrat, determineWinner gaem (λ l => if l == p then strat else otherStrat) = p := by
   exists bestStrategy p
