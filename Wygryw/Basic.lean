@@ -26,6 +26,8 @@ def Player.other : Player →Player
 instance: BEq Player where
   beq := Player.beq
 
+-- TODO how to auto simp beq-based equalities?
+
 -- can reduce any deterministic game to this
 -- note that finite by definition
 -- TODO: prove the reduction
@@ -33,12 +35,7 @@ inductive BinaryGameTree: Type 0 where
   | FirstPlayerWins: BinaryGameTree
   | SecondPlayerWins: BinaryGameTree
   | PlayerDecision: Player → BinaryGameTree → BinaryGameTree → BinaryGameTree
-  --| Draw
-
-def height : BinaryGameTree → Nat
-  | BinaryGameTree.FirstPlayerWins => 0
-  | BinaryGameTree.SecondPlayerWins => 0
-  | BinaryGameTree.PlayerDecision _ a b => (max (height a) (height b))+1
+  --| Draw -- TODO support drawable games
 
 -- define trace ofgame and then strategy for the tree
 
@@ -81,94 +78,32 @@ def bestStrategy (player :Player) : Strategy := ( λ  (a: BinaryGameTree) (_ : B
 theorem oneWinning game player : hasWinningPath player game = !hasWinningPath player.other game := by
   induction game
   case FirstPlayerWins =>
-    cases player -- todo how to dedup, mechanism like Coq?
-    · simp [Player.other, hasWinningPath, BEq.beq, Player.beq]
-    · simp [Player.other, hasWinningPath, BEq.beq, Player.beq]
-  case SecondPlayerWins => -- todo how to dedup, mechanism like Coq?
-    cases player
-    · simp [Player.other, hasWinningPath, BEq.beq, Player.beq]
-    · simp [Player.other, hasWinningPath, BEq.beq, Player.beq]
+    cases player <;> simp [Player.other, hasWinningPath, BEq.beq, Player.beq]
+  case SecondPlayerWins =>
+    cases player <;> simp [Player.other, hasWinningPath, BEq.beq, Player.beq]
   case PlayerDecision decidingPlayer a b Ha Hb =>
     unfold hasWinningPath
-    cases player -- TODO DEDUP!!!!!!!!!!!!!!!!!
-    · cases decidingPlayer
-      . simp [Player.other, BEq.beq, Player.beq]
-      . simp [Player.other, BEq.beq, Player.beq]
-    · cases decidingPlayer
-      . simp [Player.other, BEq.beq, Player.beq]
-      . simp [Player.other, BEq.beq, Player.beq]
+    cases player <;> cases decidingPlayer <;>
+      simp [Player.other, BEq.beq, Player.beq]
 
-theorem wtfICantFindLemmaForIt a b : (a || b) = false → a = false := by
-  cases a
-  cases b -- todo how to dedup this thing like in coq
-  simp
-  simp
-  simp
-
-theorem wtfICantFindLemmaForIt2 a b : (a || b) = false → b = false := by
-  cases a
-  cases b -- todo how to dedup this thing like in coq
-  simp
-  simp
-  simp
-
-theorem winPathAnd1 p a b
-  (H : hasWinningPath p (BinaryGameTree.PlayerDecision p.other a b)):
-  hasWinningPath p a := by
-  rw [hasWinningPath, Player.other] at H
-  cases p
-  · simp at H
-    simp only [BEq.beq, Player.beq] at H
-    simp at H
-    rw [oneWinning]
-    simp
-    revert H
-    apply wtfICantFindLemmaForIt
-  · simp at H -- TODO how to run this twice no copy-paste?
-    simp only [BEq.beq, Player.beq] at H
-    simp at H
-    rw [oneWinning]
-    simp
-    revert H
-    apply wtfICantFindLemmaForIt
-
-theorem winPathAnd2 p a b
-  (H : hasWinningPath p (BinaryGameTree.PlayerDecision p.other a b)):
-  hasWinningPath p b := by
-  rw [hasWinningPath, Player.other] at H
-  cases p
-  · simp at H
-    simp only [BEq.beq, Player.beq] at H
-    simp at H
-    rw [oneWinning]
-    simp
-    revert H
-    apply wtfICantFindLemmaForIt2
-  · simp at H -- TODO how to run this twice no copy-paste?
-    simp only [BEq.beq, Player.beq] at H
-    simp at H
-    rw [oneWinning]
-    simp
-    revert H
-    apply wtfICantFindLemmaForIt2
+theorem orFalse a b : (a || b) = false → a = false ∧ b = false := by
+  intro H; constructor <;> revert H <;> cases a <;> cases b <;> simp
 
 theorem winPathAnd p a b
   (H : hasWinningPath p (BinaryGameTree.PlayerDecision p.other a b)):
   hasWinningPath p a ∧ hasWinningPath p b := by
-  -- refine Iff.mpr (Bool.and_eq_true_iff (hasWinningPath p a) (hasWinningPath p b)) ?_
-  constructor
-  exact winPathAnd1 p a b H
-  exact winPathAnd2 p a b H
+  rw [hasWinningPath, Player.other] at H
+  constructor <;> cases p <;>
+  · simp [BEq.beq, Player.beq] at H
+    rw [oneWinning]; simp
+    have bothFalse := (orFalse _ _ H)
+    first | apply bothFalse.left | apply bothFalse.right
 
 theorem winPathOr p a b
   (H : hasWinningPath p (BinaryGameTree.PlayerDecision p a b)):
   hasWinningPath p a ∨ hasWinningPath p b := by
   rw [hasWinningPath] at H
-  cases p
-  · simp [BEq.beq, Player.beq] at H
-    exact H
-  · simp [BEq.beq, Player.beq] at H
-    exact H
+  cases p <;> simp [BEq.beq, Player.beq] at H <;> assumption
 
 theorem havingWinningPathWins gaem p (H: hasWinningPath p gaem) :
  ∃ strat, ∀ otherStrat, determineWinner gaem (λ l => if l == p then strat else otherStrat) = p := by
