@@ -1,15 +1,6 @@
 -- import Mathlib.Tactic.Find
 -- import Mathlib.Tactic.LibrarySearch
 
--- #find _ + _ = _ + _
--- #find (_ : ℕ) + _ = _ + _
--- #find ℕ → ℕ
--- #find (_ : nat) + _ = _ + _
--- #find _ + _ = _ + _
--- #find _ (_ + _) → _ + _ = _ + _   -- TODO(Mario): no results
--- #find add_group _ → _ + _ = _ + _ -- TODO(Mario): no results
--- #find _ || _
-
 inductive Player: Type 0 where
   | First: Player
   | Second: Player
@@ -37,24 +28,14 @@ inductive BinaryGameTree: Type 0 where
   | PlayerDecision: Player → BinaryGameTree → BinaryGameTree → BinaryGameTree
   --| Draw -- TODO support drawable games
 
--- define trace ofgame and then strategy for the tree
-
---trace:
--- initial board state
--- next state + proof that it's a child of prev
-
 inductive SimpleMoveChoice
   | Left
   | Right
 
--- moves so far, choice L, choice R
-def Strategy := /- List BinaryGameTree -> -/ BinaryGameTree → BinaryGameTree → SimpleMoveChoice
+def Strategy := BinaryGameTree → BinaryGameTree → SimpleMoveChoice
 
-
-def determineWinner (root: BinaryGameTree)
-(strategies: Player → Strategy )
--- (trace: List BinaryGameTree)
- : Player :=  match root with
+def determineWinner (root: BinaryGameTree) (strategies: Player → Strategy ): Player :=
+  match root with
   | BinaryGameTree.FirstPlayerWins => Player.First
   | BinaryGameTree.SecondPlayerWins => Player.Second
   | BinaryGameTree.PlayerDecision p a b =>
@@ -105,106 +86,52 @@ theorem winPathOr p a b
   rw [hasWinningPath] at H
   cases p <;> simp [BEq.beq, Player.beq] at H <;> assumption
 
--- TODO THIS IS AWFUL REWRITE IT
-theorem havingWinningPathWins gaem p (H: hasWinningPath p gaem) :
- ∃ strat, ∀ otherStrat, determineWinner gaem (λ l => if l == p then strat else otherStrat) = p := by
+-- There should be a lemma for it, but proving is easier than searching :/
+theorem orB a b (H: a = true ∨ b = true) (Ha : a = false) : b = true := by
+  rw [Ha] at H; simp at H; exact H
+
+-- Much copy-pasta, to simplify
+theorem havingWinningPathWins game p (H: hasWinningPath p game) :
+ ∃ strat, ∀ otherStrat, determineWinner game (λ l => if l == p then strat else otherStrat) = p := by
   exists bestStrategy p
   intro otherStrat
-  induction gaem
+  induction game
   case FirstPlayerWins =>
     cases p
     · rw [determineWinner]
-    · rw [hasWinningPath] at H
-      simp only [BEq.beq, Player.beq] at H
+    · rw [hasWinningPath] at H; simp only [BEq.beq, Player.beq] at H
   case SecondPlayerWins =>
     cases p
-    · rw [hasWinningPath] at H
-      simp only [BEq.beq, Player.beq] at H
+    · rw [hasWinningPath] at H; simp only [BEq.beq, Player.beq] at H
     · rw [determineWinner]
-  case PlayerDecision dpl da db Ha Hb  =>
-    cases dpl
+  case PlayerDecision decicingPlayer pathA pathB Ha Hb  =>
+    cases decicingPlayer
     · cases p
-      · have xDD :=winPathOr _ _ _ H
-        induction xDD
-        case inl xd =>
-          have Hh := Ha xd
-          -- rewrite [← Hh]
-          rw [determineWinner]
-          simp  [BEq.beq, Player.beq]
-          simp [bestStrategy, xd]
-          conv =>
-            rhs
-            rw [←Hh ]
-        case inr xd =>
-          have Hh := Hb xd
-          rw [determineWinner]
-          simp  [BEq.beq, Player.beq]
-          -- have notFirst := oneWinning  da Player.First
-          simp [bestStrategy]
-          --have Hq : (hasWinningPath Player.First da) = (hasWinningPath Player.First da) := by rfl
-          --revert Hq
-          generalize H: hasWinningPath Player.First da = ddd
-          cases ddd
-          simp
-          conv =>
-            rhs
-            rw [←Hh ]
-          simp
-          conv =>
-            rhs
-            rw [← Ha H ]
-      · have xDD :=winPathAnd _ _ _ H
-        have XDa := xDD.left
-        have XDb := xDD.right
+      · have winOr := winPathOr _ _ _ H
+        rw [determineWinner]
+        simp  [BEq.beq, Player.beq, bestStrategy]
+        generalize H: hasWinningPath Player.First pathA = firstCanWin
+        cases firstCanWin <;> simp <;> conv =>
+          rhs; first | rw [← Hb (orB _ _ winOr H)] | rw [← Ha H]
+      · have winAnd := winPathAnd _ _ _ H
         rw [determineWinner]
         simp  [BEq.beq, Player.beq]
-        cases (otherStrat da db)
-        · simp
-          conv =>
-            rhs
-            rw [← Ha XDa ]
-        · simp
-          conv =>
-            rhs
-            rw [← Hb XDb ]
+        cases (otherStrat pathA pathB) <;> simp
+        · conv => rhs; rw [← Ha winAnd.left ]
+        · conv => rhs; rw [← Hb winAnd.right ]
     · cases p
-      · have xDD :=winPathAnd _ _ _ H
-        have XDa := xDD.left
-        have XDb := xDD.right
+      · have winAnd := winPathAnd _ _ _ H
         rw [determineWinner]
         simp  [BEq.beq, Player.beq]
-        cases (otherStrat da db)
-        · simp
-          conv =>
-            rhs
-            rw [← Ha XDa ]
-        · simp
-          conv =>
-            rhs
-            rw [← Hb XDb ]
-      · induction winPathOr _ _ _ H
-        · case inl xD  =>
-          rw [determineWinner]
-          simp  [BEq.beq, Player.beq]
-          rw [bestStrategy, xD]
-          simp
-          conv =>
-            rhs
-            rw [← Ha xD ]
-        · case inr xD  =>
-          rw [determineWinner]
-          simp  [BEq.beq, Player.beq]
-          rw [bestStrategy]
-          generalize H: hasWinningPath Player.Second da = ddd
-          cases ddd
-          · simp
-            conv =>
-              rhs
-              rw [← Hb xD ]
-          · simp
-            conv =>
-              rhs
-              rw [← Ha H ]
+        cases (otherStrat pathA pathB) <;> simp
+        · conv => rhs; rw [← Ha winAnd.left ]
+        · conv => rhs; rw [← Hb winAnd.right ]
+      · have winOr := winPathOr _ _ _ H
+        rw [determineWinner]
+        simp  [BEq.beq, Player.beq, bestStrategy]
+        generalize H: hasWinningPath Player.Second pathA = secondCanWin
+        cases secondCanWin <;> simp <;> conv =>
+          rhs; first | rw [← Hb (orB _ _ winOr H)] | rw [← Ha H]
 
 theorem deterministicGamesHaveWinningStrategy (game: BinaryGameTree):
 ∃ p, ∃ sp, ∀ sop,
