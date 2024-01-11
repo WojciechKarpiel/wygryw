@@ -5,19 +5,17 @@ inductive Player: Type 0 where
   | First: Player
   | Second: Player
 
-def Player.beq : Player → Player → Bool
+@[simp] def Player.other: Player → Player
+  | Player.First => Player.Second
+  | Player.Second => Player.First
+
+@[simp] def Player.beq : Player → Player → Bool
   | Player.First, Player.First => true
   | Player.Second, Player.Second => true
   | _, _ => false
 
-def Player.other : Player →Player
-  | Player.First => Player.Second
-  | Player.Second => Player.First
-
-instance: BEq Player where
+@[simp] instance: BEq Player where
   beq := Player.beq
-
--- TODO how to auto simp beq-based equalities?
 
 -- can reduce any deterministic game to this
 -- note that finite by definition
@@ -59,13 +57,12 @@ def bestStrategy (player :Player) : Strategy := ( λ  (a: BinaryGameTree) (_ : B
 theorem oneWinning game player : hasWinningPath player game = !hasWinningPath player.other game := by
   induction game
   case FirstPlayerWins =>
-    cases player <;> simp [Player.other, hasWinningPath, BEq.beq, Player.beq]
+    cases player <;> simp [hasWinningPath]
   case SecondPlayerWins =>
-    cases player <;> simp [Player.other, hasWinningPath, BEq.beq, Player.beq]
+    cases player <;> simp [hasWinningPath]
   case PlayerDecision decidingPlayer a b Ha Hb =>
     unfold hasWinningPath
-    cases player <;> cases decidingPlayer <;>
-      simp [Player.other, BEq.beq, Player.beq]
+    cases player <;> cases decidingPlayer <;> simp
 
 theorem orFalse a b : (a || b) = false → a = false ∧ b = false := by
   intro H; constructor <;> revert H <;> cases a <;> cases b <;> simp
@@ -75,7 +72,7 @@ theorem winPathAnd p a b
   hasWinningPath p a ∧ hasWinningPath p b := by
   rw [hasWinningPath, Player.other] at H
   constructor <;> cases p <;>
-  · simp [BEq.beq, Player.beq] at H
+  · simp at H
     rw [oneWinning]; simp
     have bothFalse := (orFalse _ _ H)
     first | apply bothFalse.left | apply bothFalse.right
@@ -84,7 +81,7 @@ theorem winPathOr p a b
   (H : hasWinningPath p (BinaryGameTree.PlayerDecision p a b)):
   hasWinningPath p a ∨ hasWinningPath p b := by
   rw [hasWinningPath] at H
-  cases p <;> simp [BEq.beq, Player.beq] at H <;> assumption
+  cases p <;> simp at H <;> assumption
 
 -- There should be a lemma for it, but proving is easier than searching :/
 theorem orB a b (H: a = true ∨ b = true) (Ha : a = false) : b = true := by
@@ -99,36 +96,36 @@ theorem havingWinningPathWins game p (H: hasWinningPath p game) :
   case FirstPlayerWins =>
     cases p
     · rw [determineWinner]
-    · rw [hasWinningPath] at H; simp only [BEq.beq, Player.beq] at H
+    · rw [hasWinningPath] at H; simp at H
   case SecondPlayerWins =>
     cases p
-    · rw [hasWinningPath] at H; simp only [BEq.beq, Player.beq] at H
+    · rw [hasWinningPath] at H; simp at H
     · rw [determineWinner]
   case PlayerDecision decicingPlayer pathA pathB Ha Hb  =>
     cases decicingPlayer
     · cases p
       · have winOr := winPathOr _ _ _ H
         rw [determineWinner]
-        simp  [BEq.beq, Player.beq, bestStrategy]
+        simp  [bestStrategy]
         generalize H: hasWinningPath Player.First pathA = firstCanWin
         cases firstCanWin <;> simp <;> conv =>
           rhs; first | rw [← Hb (orB _ _ winOr H)] | rw [← Ha H]
       · have winAnd := winPathAnd _ _ _ H
         rw [determineWinner]
-        simp  [BEq.beq, Player.beq]
+        simp
         cases (otherStrat pathA pathB) <;> simp
         · conv => rhs; rw [← Ha winAnd.left ]
         · conv => rhs; rw [← Hb winAnd.right ]
     · cases p
       · have winAnd := winPathAnd _ _ _ H
         rw [determineWinner]
-        simp  [BEq.beq, Player.beq]
+        simp
         cases (otherStrat pathA pathB) <;> simp
         · conv => rhs; rw [← Ha winAnd.left ]
         · conv => rhs; rw [← Hb winAnd.right ]
       · have winOr := winPathOr _ _ _ H
         rw [determineWinner]
-        simp  [BEq.beq, Player.beq, bestStrategy]
+        simp  [bestStrategy]
         generalize H: hasWinningPath Player.Second pathA = secondCanWin
         cases secondCanWin <;> simp <;> conv =>
           rhs; first | rw [← Hb (orB _ _ winOr H)] | rw [← Ha H]
@@ -141,8 +138,6 @@ theorem deterministicGamesHaveWinningStrategy (game: BinaryGameTree):
   · have H₂ := oneWinning game Player.Second
     simp only [Player.other] at H₂; rw [H₁] at H₂; simp at H₂
     exists Player.Second
-    apply havingWinningPathWins
-    simp only [H₂]
+    apply havingWinningPathWins; assumption
   · exists Player.First
-    apply havingWinningPathWins
-    simp only [H₁]
+    apply havingWinningPathWins; assumption
