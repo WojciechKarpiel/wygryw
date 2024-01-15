@@ -141,3 +141,30 @@ theorem deterministicGamesHaveWinningStrategy (game: BinaryGameTree):
     apply havingWinningPathWins; assumption
   · exists Player.First
     apply havingWinningPathWins; assumption
+
+
+--------------------
+-- WIP part below
+--------------------
+inductive GameBoardState (Board : Type) : Board → Type where
+  | GameOver : ∀ b: Board, Player → GameBoardState Board b
+  | PossibleMoves : ∀ b: Board, Player → Board → List Board → GameBoardState Board b
+
+structure Game (Board: Type) where
+    initialState: Board
+    gameState : forall b: Board, GameBoardState Board b
+
+inductive FiniteGame {B} (g: Game B) : B → Prop where
+  | GameOverFinite : forall b,
+    (∃ p: Player, (g.gameState b) = GameBoardState.GameOver b p) → FiniteGame g b
+  | LeadingToFinite : forall b,
+    (∃ (p:Player), ∃ m: B, ∃ ms : List B,
+     (g.gameState b) = GameBoardState.PossibleMoves b p m ms) →
+    FiniteGame g m →  (∀ x: B, List.Mem x ms → FiniteGame g x ) → FiniteGame g b
+def isFinite {B} (g : Game B) : Prop := FiniteGame g g.initialState
+
+
+def toBinary_ {B} (g : Game B) (fin: isFinite g) (b: B): BinaryGameTree :=
+  sorry
+-- def toBinary (g: Game) (fin: isFinite g) : BinaryGameTree :=
+  -- toBinary_ g fin g.initialState
