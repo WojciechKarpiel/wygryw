@@ -146,25 +146,23 @@ theorem deterministicGamesHaveWinningStrategy (game: BinaryGameTree):
 --------------------
 -- WIP part below
 --------------------
-inductive GameBoardState (Board : Type) : Board → Type where
-  | GameOver : ∀ b: Board, Player → GameBoardState Board b
-  | PossibleMoves : ∀ b: Board, Player → Board → List Board → GameBoardState Board b
+structure GameState (Board:Type) where
+  board: Board
+  isOver: Option Player
+  playerToMove: Player
 
 structure Game (Board: Type) where
-    initialState: Board
-    gameState : forall b: Board, GameBoardState Board b
+  initialState: GameState Board
+  possibleMoves: GameState Board → List (GameState Board)
 
-inductive FiniteGame {B} (g: Game B) : B → Prop where
-  | GameOverFinite : forall b,
-    (∃ p: Player, (g.gameState b) = GameBoardState.GameOver b p) → FiniteGame g b
-  | LeadingToFinite : forall b,
-    (∃ (p:Player), ∃ m: B, ∃ ms : List B,
-     (g.gameState b) = GameBoardState.PossibleMoves b p m ms) →
-    FiniteGame g m →  (∀ x: B, List.Mem x ms → FiniteGame g x ) → FiniteGame g b
-def isFinite {B} (g : Game B) : Prop := FiniteGame g g.initialState
+def finishState {B} (gs : GameState B) : Bool := gs.isOver.isSome
 
+inductive FiniteGameState {B} (game: Game B) : GameState B → Prop where
+  | FinishedIsFinite: ∀ g : GameState B, finishState g → FiniteGameState game g
+  | FiniteFutures : ∀ g: GameState B, ∀ next : GameState B,
+      next ∈ game.possibleMoves g → FiniteGameState game next → FiniteGameState game g
 
-def toBinary_ {B} (g : Game B) (fin: isFinite g) (b: B): BinaryGameTree :=
-  sorry
--- def toBinary (g: Game) (fin: isFinite g) : BinaryGameTree :=
-  -- toBinary_ g fin g.initialState
+def finiteGame {B} (g: Game B) : Prop := FiniteGameState g g.initialState
+
+-- possible moves is not empty:
+-- def playersHaveChoice
