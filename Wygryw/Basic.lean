@@ -146,16 +146,20 @@ theorem deterministicGamesHaveWinningStrategy (game: BinaryGameTree):
 --------------------
 -- WIP part below
 --------------------
+inductive NextAction
+ | NeedsToMove : Player → NextAction
+ | GameOver : Player → NextAction
+
 structure GameState (Board:Type) where
   board: Board
-  isOver: Option Player
-  playerToMove: Player
+  nextAction: NextAction
 
 structure Game (Board: Type) where
   initialState: GameState Board
   possibleMoves: GameState Board → List (GameState Board)
 
-def finishState {B} (gs : GameState B) : Bool := gs.isOver.isSome
+def finishState {B} (gs : GameState B) : Prop :=
+  ∃ p, gs.nextAction = NextAction.GameOver p
 
 inductive FiniteGameState {B} (game: Game B) : GameState B → Prop where
   | FinishedIsFinite: ∀ g : GameState B, finishState g → FiniteGameState game g
@@ -164,5 +168,11 @@ inductive FiniteGameState {B} (game: Game B) : GameState B → Prop where
 
 def finiteGame {B} (g: Game B) : Prop := FiniteGameState g g.initialState
 
--- possible moves is not empty:
--- def playersHaveChoice
+inductive ReachableGameState {B} (game: Game B) : GameState B → Prop where
+  | InitialReachable: ReachableGameState game game.initialState
+  | ReachableByMove: ∀ gs, ReachableGameState game gs →
+    ∀ next, next ∈ game.possibleMoves gs → ReachableGameState game next
+
+def playersHaveChoice {B} (game: Game B) : Prop :=
+  ∀ gs: GameState B, ReachableGameState game gs →
+  finishState gs ∨ (game.possibleMoves gs).length ≥ 2
